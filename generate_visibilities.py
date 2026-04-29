@@ -55,7 +55,7 @@ def generate_mask(H, W, sample_frac=0.1, rng=None):
     return mask.astype(np.float32)
 
 
-def generate_visibilities(file_path, img_size=None, sample_frac=0.10, rng=None):
+def generate_visibilities(file_path, img_size=None, sample_frac=0.10, random_mask=False, rng=None):
     if rng is None:
         rng = np.random.default_rng()
     
@@ -71,8 +71,11 @@ def generate_visibilities(file_path, img_size=None, sample_frac=0.10, rng=None):
     else:
         img = np.zeros_like(img, dtype=np.float32)
 
-    H, W = img_size
-    mask = generate_mask(H, W, sample_frac=sample_frac, rng=rng)
+    if random_mask:
+        mask = (rng.random(img_size) < sample_frac).astype(np.float64)
+    else:   
+        H, W = img_size
+        mask = generate_mask(H, W, sample_frac=sample_frac, rng=rng)
 
     fft_full = np.fft.fftshift(np.fft.fft2(img, norm="ortho"))
     visibilities = mask * fft_full
@@ -85,14 +88,16 @@ if __name__ == "__main__":
     parser.add_argument('--output_path', type=str, required=True, help="Path to the Output Folder for saving the visibilities")
     parser.add_argument('--img_size', type=int, nargs=2, default=None, help="Optional image size (H W). If not provided, no resizing is done.")
     parser.add_argument('--sample_frac', type=float, default=0.10, help="Fraction of Fourier coefficients to sample (default: 0.10)")
+    parser.add_argument('--random_mask', action='store_true', help="Use random mask instead of circular arc mask")
     parser.add_argument('--seed', type=int, default=42, help="Random seed for reproducibility (default: 42)")
     args = parser.parse_args()
     
-    os.makedirs(args.output_path, exist_ok=True)
+    mask_type = "random" if args.random_mask else "arc"
+    os.makedirs(os.path.join(args.output_path, f"{mask_type}_{args.sample_frac*100:.0f}/Visibilities"), exist_ok=True)
     rng = np.random.default_rng(seed=args.seed)
     for filename in sorted(os.listdir(args.input_path)):
         if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.tiff')):
             file_path = os.path.join(args.input_path, filename)
-            visibilities, mask, image = generate_visibilities(file_path, img_size=args.img_size, sample_frac=args.sample_frac, rng=rng)
-            np.savez(os.path.join(args.output_path, f"{os.path.splitext(filename)[0]}.npz"), visibilities=visibilities, mask=mask, image=image)
+            visibilities, mask, image = generate_visibilities(file_path, img_size=args.img_size, sample_frac=args.sample_frac, random_mask=args.random_mask, rng=rng)
+            np.savez(os.path.join(args.output_path, f"{mask_type}_{args.sample_frac*100:.0f}/Visibilities", f"{os.path.splitext(filename)[0]}.npz"), visibilities=visibilities, mask=mask, image=image)
     

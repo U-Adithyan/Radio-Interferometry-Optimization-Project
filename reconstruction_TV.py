@@ -49,7 +49,7 @@ if __name__ == "__main__":
     parser.add_argument('--output_path', type=str, required=True, help="Path to the Output Folder for saving the reconstructed images")
     parser.add_argument('--tv_weight', type=float, default=5e-3, help="Weight for the TV regularization (default: 5e-3)")
     parser.add_argument('--step_size', type=float, default=1.0, help="Step size for the gradient descent (default: 1.0)")
-    parser.add_argument('--num_iterations', type=int, default=500, help="Number of iterations for the FISTA algorithm (default: 500)")
+    parser.add_argument('--num_iterations', type=int, default=300, help="Number of iterations for the FISTA algorithm (default: 300)")
     args = parser.parse_args()
     
     os.makedirs(args.output_path, exist_ok=True)
@@ -59,11 +59,10 @@ if __name__ == "__main__":
             data = np.load(os.path.join(args.input_path, filename))
             visibility = data['visibilities']
             mask = data['mask']
-            initial_image = np.real(np.fft.ifft2(np.fft.ifftshift(visibility), norm="ortho"))
+            initial_image = adjoint(visibility, mask)
             
             reconstructed_image = reconstruct_fista_tv(visibility, mask, initial_image, tv_weight=args.tv_weight, step_size=args.step_size, num_iterations=args.num_iterations)
             final_img = reconstructed_image - reconstructed_image.min()
             if final_img.max() > 0:
                 final_img = final_img / final_img.max()
             io.imsave(os.path.join(args.output_path, f"{os.path.splitext(filename)[0]}.png"), (final_img * 255).astype(np.uint8))
-            #np.save(os.path.join(args.output_path, f"{os.path.splitext(filename)[0]}.npy"), reconstructed_image)

@@ -14,7 +14,7 @@ def adjoint(visibility, sampling_mask):
     return np.real(np.fft.ifft2(np.fft.ifftshift(masked_vis), norm="ortho"))
 
 
-def mem_reconstruct(visibilities, mask, prior=None, weights=None, lambda_entropy=1e-3, step_size=1e-5, n_iters=500):
+def mem_reconstruct(visibilities, mask, prior=None, weights=None, lambda_entropy=1e-3, step_size=1e-5, n_iters=300):
     eps = 1e-8
     H, W = mask.shape
     
@@ -50,8 +50,6 @@ def mem_reconstruct(visibilities, mask, prior=None, weights=None, lambda_entropy
         
         img = img * np.exp(update)
         img = np.maximum(img, eps)
-        
-        # print(f"Iteration {epoch+1}/{n_iters}, Data Loss: {data_loss:.4f}, Entropy: {entropy:.4f}")
 
     return img, history
 
@@ -63,7 +61,7 @@ if __name__ == "__main__":
     parser.add_argument('--output_path', type=str, required=True, help="Path to the Output Folder for saving the reconstructed images")
     parser.add_argument('--lambda_entropy', type=float, default=1e-3, help="Weight for the entropy regularization (default: 1e-3)")
     parser.add_argument('--step_size', type=float, default=1e-5, help="Step size for the gradient descent (default: 1e-5)")
-    parser.add_argument('--num_iterations', type=int, default=500, help="Number of iterations for the MEM algorithm (default: 500)")
+    parser.add_argument('--num_iterations', type=int, default=300, help="Number of iterations for the MEM algorithm (default: 300)")
     args = parser.parse_args()
     
     os.makedirs(args.output_path, exist_ok=True)
@@ -80,4 +78,3 @@ if __name__ == "__main__":
                 final_img = final_img / final_img.max()
                 
             io.imsave(os.path.join(args.output_path, f"{os.path.splitext(filename)[0]}.png"), (final_img * 255).astype(np.uint8))
-            #np.save(os.path.join(args.output_path, f"{os.path.splitext(filename)[0]}.npy"), reconstructed_image)
